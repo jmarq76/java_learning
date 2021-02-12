@@ -4,6 +4,8 @@ import com.github.jmarq76.beerstockAPI.dto.BeerDTO;
 import com.github.jmarq76.beerstockAPI.entity.Beer;
 import com.github.jmarq76.beerstockAPI.exception.BeerAlreadyRegisteredException;
 import com.github.jmarq76.beerstockAPI.exception.BeerNotFoundException;
+import com.github.jmarq76.beerstockAPI.exception.BeerStockBelowZeroException;
+import com.github.jmarq76.beerstockAPI.exception.BeerStockExceededException;
 import com.github.jmarq76.beerstockAPI.mapper.BeerMapper;
 import com.github.jmarq76.beerstockAPI.repository.BeerRepository;
 import lombok.AllArgsConstructor;
@@ -56,5 +58,29 @@ public class BeerService {
         if (optSavedBeer.isPresent()) {
             throw new BeerAlreadyRegisteredException(name);
         }
+    }
+
+    public BeerDTO increment(Long id, int quantityToIncrement) throws BeerStockExceededException, BeerNotFoundException {
+        Beer beerToIncrementStock = verifyIfExists(id);
+        int verifyIncrement = quantityToIncrement + beerToIncrementStock.getQuantity();
+        if (verifyIncrement <= beerToIncrementStock.getMax()){
+            beerToIncrementStock.setQuantity(verifyIncrement);
+            Beer incrementStock = beerRepository.save(beerToIncrementStock);
+            return beerMapper.toDTO(incrementStock);
+        }
+
+        throw new BeerStockExceededException(id, quantityToIncrement);
+    }
+
+    public BeerDTO decrement(Long id, int quantityToDecrement) throws BeerNotFoundException, BeerStockBelowZeroException {
+        Beer beerToDecrementStock = verifyIfExists(id);
+        int verifyDecrement = beerToDecrementStock.getQuantity() - quantityToDecrement;
+        if (verifyDecrement >= 0){
+            beerToDecrementStock.setQuantity(verifyDecrement);
+            Beer decrementStock = beerRepository.save(beerToDecrementStock);
+            return beerMapper.toDTO(decrementStock);
+        }
+
+        throw new BeerStockBelowZeroException(id, quantityToDecrement);
     }
 }

@@ -5,6 +5,8 @@ import com.github.jmarq76.beerstockAPI.dto.BeerDTO;
 import com.github.jmarq76.beerstockAPI.entity.Beer;
 import com.github.jmarq76.beerstockAPI.exception.BeerAlreadyRegisteredException;
 import com.github.jmarq76.beerstockAPI.exception.BeerNotFoundException;
+import com.github.jmarq76.beerstockAPI.exception.BeerStockBelowZeroException;
+import com.github.jmarq76.beerstockAPI.exception.BeerStockExceededException;
 import com.github.jmarq76.beerstockAPI.mapper.BeerMapper;
 import com.github.jmarq76.beerstockAPI.repository.BeerRepository;
 import org.junit.jupiter.api.Test;
@@ -141,5 +143,37 @@ public class BeerServiceTest {
 
         verify(beerRepository, times(1)).findById(expectedDeletedBeerDTO.getId());
         verify(beerRepository, times(1)).deleteById(expectedDeletedBeerDTO.getId());
+    }
+
+    @Test
+    void whenIncrementIsCalledThenIncrementBeerStock() throws BeerNotFoundException, BeerStockExceededException {
+        BeerDTO expectedBeerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
+        Beer expectedBeer = beerMapper.toModel(expectedBeerDTO);
+
+        when(beerRepository.findById(expectedBeerDTO.getId())).thenReturn(Optional.of(expectedBeer));
+        when(beerRepository.save(expectedBeer)).thenReturn(expectedBeer);
+
+        int quantityToIncrement = 10;
+        int expectedQuantityAfterIncrement = expectedBeerDTO.getQuantity() + quantityToIncrement;
+        BeerDTO incrementedBeerDTO = beerService.increment(expectedBeerDTO.getId(), quantityToIncrement);
+
+        assertThat(incrementedBeerDTO.getQuantity(), is(equalTo(expectedQuantityAfterIncrement)));
+        assertThat(expectedBeerDTO.getMax(), is(greaterThan(expectedQuantityAfterIncrement)));
+    }
+
+    @Test
+    void whenDecrementIsCalledThenDecrementBeerStock() throws BeerNotFoundException, BeerStockBelowZeroException {
+        BeerDTO expectedBeerDTO = BeerDTOBuilder.builder().build().toBeerDTO();
+        Beer expectedBeer = beerMapper.toModel(expectedBeerDTO);
+
+        when(beerRepository.findById(expectedBeerDTO.getId())).thenReturn(Optional.of(expectedBeer));
+        when(beerRepository.save(expectedBeer)).thenReturn(expectedBeer);
+
+        int quantityToDecrement = 10;
+        int expectedQuantityAfterDecrement = expectedBeerDTO.getQuantity() - quantityToDecrement;
+        BeerDTO decrementedBeerDTO = beerService.decrement(expectedBeerDTO.getId(), quantityToDecrement);
+
+        assertThat(decrementedBeerDTO.getQuantity(), is(equalTo(expectedQuantityAfterDecrement)));
+        assertThat(expectedBeerDTO.getMax(), is(greaterThan(expectedQuantityAfterDecrement)));
     }
 }
